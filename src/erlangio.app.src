@@ -1,0 +1,13 @@
+{application, erlangio,
+    [
+        {description, "ErlangIO"},
+        {vsn, "0.1.0"},
+        {registered, []},
+        {applications, [
+            kernel,
+            stdlib
+        ]},
+        {mod, {erlangio_app, []}},
+        {env, []}
+    ]
+}.
