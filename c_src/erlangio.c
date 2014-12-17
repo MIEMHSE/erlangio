@@ -7,6 +7,7 @@
 #include <linux/miscdevice.h>
 #include <linux/fs.h>
 #include <linux/proc_fs.h>
+#include <linux/mutex.h>
 #include <asm/uaccess.h>
 #include <asm/errno.h>
 
@@ -53,6 +54,9 @@ static const struct file_operations proc_file_fops = {
     .release = device_release
 };
 
+static DEFINE_MUTEX(device_open_lock);
+static DEFINE_MUTEX(device_rw_lock);
+
 /* Functions */
 
 static int __init md_init( void )
@@ -91,19 +95,25 @@ static void __exit md_exit( void )
 
 static int device_open( struct inode *inode, struct file *file )
 {
+    mutex_lock( &device_open_lock );
+
     if ( device_opened )
     {
+        mutex_unlock( &device_open_lock );
         return -EBUSY;
     }
 
     device_opened++;
+    mutex_unlock( &device_open_lock );
 
     return SUCCESS;
 }
 
 static int device_release(struct inode *inode, struct file *file)
 {
-    device_opened --;
+    mutex_lock( &device_open_lock );
+    device_opened--;
+    mutex_unlock( &device_open_lock );
 
     return 0;
 }
@@ -112,8 +122,11 @@ static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_
 {
     int bytes_read = 0;
 
+    mutex_lock( &device_rw_lock );
+
     if ( *msg_ptr == 0 )
     {
+        mutex_unlock( &device_rw_lock );
         return 0;
     }
 
@@ -125,6 +138,8 @@ static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_
         bytes_read++;
     }
 
+    mutex_unlock( &device_rw_lock );
+
     return bytes_read;
 }
 
@@ -133,11 +148,15 @@ static ssize_t device_write( struct file *filp, const char *buffer, size_t lengt
 {
 	int bytes_read = 0;
 
+	mutex_lock( &device_rw_lock );
+
 	for ( bytes_read = 0; bytes_read < length && bytes_read < BUF_LEN; bytes_read++ )
 		get_user( msg[bytes_read], buffer + bytes_read );
 
-    msg[bytes_read] = '\0';
+    memset( msg + bytes_read, 0, 1 );
     msg_ptr = msg;
+
+    mutex_unlock( &device_rw_lock );
 
 	return bytes_read;
 }
