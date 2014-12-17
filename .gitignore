@@ -1,3 +1,5 @@
+# Erlang
+
 .eunit
 deps
 *.o
@@ -5,12 +7,16 @@ deps
 *.plt
 erl_crash.dump
 ebin
-rel/example_project
 .concrete/DEV_MODE
 .rebar
+
+# Linux kernel module
 c_src/*.cmd
 c_src/*.ko
 c_src/*.mod.*
 c_src/.tmp_versions
 c_src/Module.symvers
 c_src/modules.order
+
+# IDEA
+.idea

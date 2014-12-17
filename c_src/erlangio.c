@@ -146,19 +146,19 @@ static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_
 
 static ssize_t device_write( struct file *filp, const char *buffer, size_t length, loff_t *offset )
 {
-	int bytes_read = 0;
+    int bytes_read = 0;
 
-	mutex_lock( &device_rw_lock );
+    mutex_lock( &device_rw_lock );
 
-	for ( bytes_read = 0; bytes_read < length && bytes_read < BUF_LEN; bytes_read++ )
-		get_user( msg[bytes_read], buffer + bytes_read );
+    for ( bytes_read = 0; bytes_read < length && bytes_read < BUF_LEN; bytes_read++ )
+        get_user( msg[bytes_read], buffer + bytes_read );
 
     memset( msg + bytes_read, 0, 1 );
     msg_ptr = msg;
 
     mutex_unlock( &device_rw_lock );
 
-	return bytes_read;
+    return bytes_read;
 }
 
 module_init( md_init );
