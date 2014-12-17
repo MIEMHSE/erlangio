@@ -6,6 +6,7 @@
 #include <linux/module.h>
 #include <linux/miscdevice.h>
 #include <linux/fs.h>
+#include <linux/proc_fs.h>
 #include <asm/uaccess.h>
 #include <asm/errno.h>
 
@@ -24,9 +25,8 @@ MODULE_SUPPORTED_DEVICE( DRIVER_NAME );
 static int minor = 0;
 module_param( minor, int, S_IRUGO );
 
-static int device_opened = 0;  /* Is device open?  Used to prevent multiple
-                                        access to the device */
-static char msg[BUF_LEN];    /* The msg the device will give when asked    */
+static int device_opened = 0;  // Times device is opened
+static char msg[BUF_LEN];  // Message buffer
 static char *msg_ptr;
 
 static struct file_operations misc_fops = {
@@ -38,10 +38,19 @@ static struct file_operations misc_fops = {
 };
 
 static struct miscdevice misc_dev = {
-   .minor = MISC_DYNAMIC_MINOR,    // автоматически выбираемое
+   .minor = MISC_DYNAMIC_MINOR,  // auto
    .name = DRIVER_NAME,
    .fops = &misc_fops,
-   .mode = S_IRUGO
+   .mode = S_IRUGO | S_IWUSR
+};
+
+struct proc_dir_entry *proc_file_entry;
+
+static const struct file_operations proc_file_fops = {
+    .owner = THIS_MODULE,
+    .open  = device_open,
+    .read  = device_read,
+    .release = device_release
 };
 
 /* Functions */
@@ -58,12 +67,22 @@ static int __init md_init( void )
     {
         printk( KERN_ERR "%% Unable to register misc device\n" );
     }
+
+    proc_file_entry = proc_create("erlangio", 0, NULL, &proc_file_fops);
+
+    if(proc_file_entry == NULL)
+        return -ENOMEM;
+
+    memset( msg, 0, BUF_LEN );
+    msg_ptr = msg;
+
     return ret;
 }
 
 
 static void __exit md_exit( void )
 {
+    remove_proc_entry( "erlangio", NULL );
     misc_deregister( &misc_dev );
 }
 
@@ -72,15 +91,12 @@ static void __exit md_exit( void )
 
 static int device_open( struct inode *inode, struct file *file )
 {
-    static int counter = 0;
     if ( device_opened )
     {
         return -EBUSY;
     }
 
     device_opened++;
-    sprintf( msg, "Test message. Device was accessed %d time(s).\n", counter++ );
-    msg_ptr = msg;
 
     return SUCCESS;
 }
@@ -113,10 +129,17 @@ static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_
 }
 
 
-static ssize_t device_write( struct file *filp, const char *buff, size_t len, loff_t *off )
+static ssize_t device_write( struct file *filp, const char *buffer, size_t length, loff_t *offset )
 {
-    printk ( KERN_ERR "%% Sorry, this operation isn't supported.\n" );
-    return -EINVAL;
+	int bytes_read = 0;
+
+	for ( bytes_read = 0; bytes_read < length && bytes_read < BUF_LEN; bytes_read++ )
+		get_user( msg[bytes_read], buffer + bytes_read );
+
+    msg[bytes_read] = '\0';
+    msg_ptr = msg;
+
+	return bytes_read;
 }
 
 module_init( md_init );

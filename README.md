@@ -11,8 +11,8 @@ Moscow Institute of Electronics and Mathematics (MIEM HSE).
 ## Introduction
 
 This is a proof of technology that might show how to connect Erlang VM to Linux kernel device driver.
-The main idea is to connect Erlang application to device driver using memory map file I/O API. 
-As for device driver, it is simple misc_device that uses kernel API to map incoming data to file system.
+The main idea is to connect Erlang application to device driver through procfs.
+As for device driver, it is simple misc_device.
 
 ## Getting the code
 
@@ -32,7 +32,6 @@ From source:
 Install the dependencies:
 
 - [Rebar](https://github.com/basho/rebar/) (may be installed using your package manager)
-- [Emmap](https://github.com/krestenkrab/emmap/)
 - [Inotify](https://github.com/sheyll/inotify/)
 
 Getting dependencies (after Rebar is installed):

@@ -15,5 +15,6 @@
 -define(MAX_RESTART, 5).
 -define(MAX_TIME, 60).
 
-%% Memory map file definition
--define(MMAP_FILE, "/tmp/erlangio").
+%% Erlang IO Linux kernel device
+-define(ERLANGIO_DEV, "/dev/erlangio").
+-define(ERLANGIO_PROC, "/proc/erlangio").

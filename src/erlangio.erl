@@ -2,7 +2,7 @@
 %%% @author ssobko
 %%% @copyright (C) 2014, The Profitware Group
 %%% @doc
-%%% Main logic for session server.
+%%% Main logic for ErlangIO.
 %%% @end
 %%% Created : 15.10.2014 15:53
 %%%-------------------------------------------------------------------
@@ -28,7 +28,7 @@
 -include_lib("inotify/include/inotify.hrl").
 -define(SERVER, ?MODULE).
 
--record(state, {iodevice, filepos}).
+-record(state, {data}).
 
 %% ===================================================================
 %% API functions
@@ -42,22 +42,19 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    Mem = start_inotify_and_mmap(),
-    State = init_state(Mem),
+    start_inotify(),
+    State = init_state(),
     {ok, State}.
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
 
-handle_cast(test_mmap, State) ->
-    Mem = get_state_iodevice(State),
-    FilePos = get_state_filepos(State),
-    {ok, Reply} = file:pread(Mem, FilePos, 4096 - FilePos),
-    NewFilePos = FilePos + byte_size(Reply),
-    io:format("~w ~w~n", [Reply, NewFilePos]),
-    %NewState = set_state_filepos(State, NewFilePos),
-    {noreply, State#state{filepos = NewFilePos}};
+handle_cast(get_data, State) ->
+    Reply = raw_read_file(?ERLANGIO_PROC),
+    io:format("Got reply: ~s~n", [binary_to_list(Reply)]),
+    NewState = set_state_data(State, Reply),
+    {noreply, NewState};
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -65,9 +62,7 @@ handle_cast(_Msg, State) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
-terminate(_Reason, State) ->
-    Mem = get_state_iodevice(State),
-    ok = file:close(Mem),
+terminate(_Reason, _State) ->
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -77,8 +72,8 @@ code_change(_OldVsn, State, _Extra) ->
 %% Inotify callbacks
 %% ===================================================================
 
-inotify_event(_Arg, _EventRef, _Msg = ?inotify_msg(_Mask = [?MODIFY], _Cookie, _Name)) ->
-    gen_server:cast(?SERVER, test_mmap),
+inotify_event(_Arg, _EventRef, _Msg = ?inotify_msg(_Mask = [?CLOSE_WRITE], _Cookie, _Name)) ->
+    gen_server:cast(?SERVER, get_data),
     ok;
 
 inotify_event(_Arg, _EventRef, _Msg) ->
@@ -88,23 +83,34 @@ inotify_event(_Arg, _EventRef, _Msg) ->
 %% Internal functions
 %% ===================================================================
 
-start_inotify_and_mmap() ->
+start_inotify() ->
     application:start(inotify),
-    {ok, Mem} = emmap:open(?MMAP_FILE, [read, shared, direct]),
-    Ref = inotify:watch(?MMAP_FILE),
+    Ref = inotify:watch(?ERLANGIO_DEV),
     inotify:print_events(Ref),
-    inotify_evt:add_handler(Ref, ?MODULE, []),
-    Mem.
+    inotify_evt:add_handler(Ref, ?MODULE, []).
 
-init_state(IoDevice) ->
-    State = #state{iodevice = IoDevice, filepos = 0},
+init_state() ->
+    State = #state{data = null},
     State.
 
-get_state_iodevice(State) ->
-    State#state.iodevice.
+get_state_data(State) ->
+    State#state.data.
 
-get_state_filepos(State) ->
-    State#state.filepos.
+set_state_data(State, Data) ->
+    State#state{data = Data}.
 
-set_state_filepos(State, fpos) ->
-    State#state{filepos = fpos}.
+raw_read_file(Path) ->
+    {ok, File} = file:open(Path, [read, binary]),
+    raw_read_loop(File, []).
+
+raw_read_loop(File, Acc) ->
+    case file:read(File, 5) of
+        {ok, Bytes} ->
+            raw_read_loop(File, [Acc | Bytes]);
+        eof ->
+            file:close(File),
+            iolist_to_binary(Acc);
+        {error, Reason} ->
+            file:close(File),
+            erlang:error(Reason)
+    end.
