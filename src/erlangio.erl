@@ -93,9 +93,6 @@ init_state() ->
     State = #state{data = null},
     State.
 
-get_state_data(State) ->
-    State#state.data.
-
 set_state_data(State, Data) ->
     State#state{data = Data}.
 

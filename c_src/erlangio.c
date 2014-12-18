@@ -1,7 +1,3 @@
-#if defined(CONFIG_MODVERSIONS) && ! defined(MODVERSIONS)
-    #include <linux/modversions.h>
-    #define MODVERSIONS
-#endif
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/miscdevice.h>
@@ -72,9 +68,9 @@ static int __init md_init( void )
         printk( KERN_ERR "%% Unable to register misc device\n" );
     }
 
-    proc_file_entry = proc_create("erlangio", 0, NULL, &proc_file_fops);
+    proc_file_entry = proc_create( DRIVER_NAME, 0, NULL, &proc_file_fops );
 
-    if(proc_file_entry == NULL)
+    if( proc_file_entry == NULL )
         return -ENOMEM;
 
     memset( msg, 0, BUF_LEN );
@@ -86,7 +82,7 @@ static int __init md_init( void )
 
 static void __exit md_exit( void )
 {
-    remove_proc_entry( "erlangio", NULL );
+    remove_proc_entry( DRIVER_NAME, NULL );
     misc_deregister( &misc_dev );
 }
 
