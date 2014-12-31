@@ -16,12 +16,12 @@ As for device driver, it is simple misc_device.
 
 ## Getting the code
 
-The code is hosted at [GitHub](https://github.com/profitware/erlangio/).
+The code is hosted at [GitHub](https://github.com/MIEMHSE/erlangio/).
 
 Check out the latest development version anonymously with:
 
 ```
- $ git clone git://github.com/profitware/erlangio.git
+ $ git clone git://github.com/MIEMHSE/erlangio.git
  $ cd erlangio
 ```
 
@@ -49,4 +49,10 @@ To run development environment
 $ sudo insmod priv/erlangio.ko
 $ erl -pa ebin deps/*/ebin -eval "application:start(erlangio)"
 $ sudo rmmod erlangio
+```
+
+To test technology while application is running
+
+```
+$ echo 'Hello, world!' | sudo tee --append /dev/erlangio > /dev/null
 ```
